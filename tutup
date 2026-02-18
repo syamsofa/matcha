@@ -12,7 +12,62 @@
     return null;
   }
 
-  // ==== PILIH FILE CSV ====
+  // ===============================
+  // ==== BUAT PROGRESS BOX UI ====
+  // ===============================
+  const progressBox = document.createElement("div");
+  progressBox.id = "automation-progress-box";
+  progressBox.style.position = "fixed";
+  progressBox.style.top = "20px";
+  progressBox.style.right = "20px";
+  progressBox.style.width = "280px";
+  progressBox.style.background = "#1e293b";
+  progressBox.style.color = "#fff";
+  progressBox.style.padding = "15px";
+  progressBox.style.borderRadius = "10px";
+  progressBox.style.boxShadow = "0 8px 20px rgba(0,0,0,0.3)";
+  progressBox.style.zIndex = "999999";
+  progressBox.style.fontFamily = "Arial, sans-serif";
+  progressBox.innerHTML = `
+    <div style="font-size:14px;margin-bottom:8px;">
+      <strong>🚀 Proses Otomatis</strong>
+    </div>
+    <div id="progress-text" style="font-size:13px;margin-bottom:6px;">
+      Menunggu file...
+    </div>
+    <div style="background:#334155;border-radius:6px;height:10px;overflow:hidden;">
+      <div id="progress-bar" style="
+        height:100%;
+        width:0%;
+        background:linear-gradient(90deg,#22c55e,#16a34a);
+        transition:width 0.3s;
+      "></div>
+    </div>
+  `;
+  document.body.appendChild(progressBox);
+
+  const progressText = document.getElementById("progress-text");
+  const progressBar = document.getElementById("progress-bar");
+
+  function updateProgress(current, total) {
+    const percent = Math.round((current / total) * 100);
+    progressText.innerHTML = `
+      Diproses: <b>${current}</b> dari <b>${total}</b><br>
+      Progress: ${percent}%
+    `;
+    progressBar.style.width = percent + "%";
+  }
+
+  function setFinished() {
+    progressText.innerHTML = "✅ Selesai semua record";
+    progressBar.style.width = "100%";
+    progressBar.style.background = "#22c55e";
+    progressBox.style.background = "#065f46";
+  }
+
+  // ===============================
+  // ==== PILIH FILE CSV ===========
+  // ===============================
   const inputFile = document.createElement("input");
   inputFile.type = "file";
   inputFile.accept = ".csv";
@@ -25,7 +80,6 @@
 
     const text = await file.text();
 
-    // ==== PARSE CSV (2 KOLOM: idsbr;hasil) ====
     const lines = text.split(/\r?\n/).map(r => r.trim()).filter(r => r !== "");
 
     if (lines.length < 2) {
@@ -46,15 +100,20 @@
       };
     });
 
-    console.log("Total data ditemukan:", rows.length);
+    const total = rows.length;
+    updateProgress(0, total);
 
-    // ==== LOOP SETIAP RECORD ====
+    // ===============================
+    // ==== LOOP SETIAP RECORD ======
+    // ===============================
     for (let i = 0; i < rows.length; i++) {
+
+      updateProgress(i + 1, total);
 
       const currentID = rows[i].idsbr;
       const currentHasil = rows[i].hasil;
 
-      console.log(`Proses (${i+1}/${rows.length}) : ${currentID} -> hasil: ${currentHasil}`);
+      console.log(`Proses (${i+1}/${rows.length}) : ${currentID}`);
 
       // 1. Isi IDSBR
       const searchInput = document.getElementById("search-idsbr");
@@ -77,15 +136,12 @@
 
       // 3. Klik tombol tandai
       const btnTandai = await waitForElement(".btn-tandai");
-      if (!btnTandai) {
-        console.log("btn-tandai tidak ditemukan, skip...");
-        continue;
-      }
-      btnTandai.click();
+      if (!btnTandai) continue;
 
+      btnTandai.click();
       await delay(1500);
 
-      // 4. Set nilai sesuai kolom hasil
+      // 4. Set nilai hasil
       const hasilGc = document.getElementById("tt_hasil_gc");
       if (hasilGc) {
         hasilGc.value = currentHasil;
@@ -101,7 +157,7 @@
 
       await delay(1500);
 
-      // 6. Klik semua SweetAlert confirm
+      // 6. Klik SweetAlert confirm
       for (let j = 0; j < 3; j++) {
         const confirmBtn = await waitForElement(".swal2-confirm.swal2-styled", 5000);
         if (confirmBtn) {
@@ -112,9 +168,10 @@
         }
       }
 
-      await delay(2000); // jeda antar ID
+      await delay(2000);
     }
 
+    setFinished();
     alert("Selesai semua record ✅");
 
   };
