@@ -2,7 +2,6 @@
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // ==== FUNCTION WAIT ELEMENT ====
   async function waitForElement(selector, timeout = 10000) {
     const start = Date.now();
     while (Date.now() - start < timeout) {
@@ -26,20 +25,43 @@
 
     const text = await file.text();
 
-    // Pisahkan baris, buang header jika ada
-    let rows = text.split(/\r?\n/).map(r => r.trim()).filter(r => r !== "");
+    // ==== PARSE CSV (2 KOLOM: idsbr;hasil) ====
+    const lines = text.split(/\r?\n/).map(r => r.trim()).filter(r => r !== "");
 
-    console.log("Total ID ditemukan:", rows.length);
+    if (lines.length < 2) {
+      return alert("Format CSV salah. Minimal ada header dan 1 data.");
+    }
+
+    const header = lines[0].toLowerCase().trim();
+
+    if (header !== "idsbr;hasil") {
+      return alert("Header harus tepat: idsbr;hasil");
+    }
+
+    const rows = lines.slice(1).map(line => {
+      const parts = line.split(";").map(v => v.trim());
+      return {
+        idsbr: parts[0],
+        hasil: parts[1]
+      };
+    });
+
+    console.log("Total data ditemukan:", rows.length);
 
     // ==== LOOP SETIAP RECORD ====
     for (let i = 0; i < rows.length; i++) {
 
-      const currentID = rows[i];
-      console.log(`Proses (${i+1}/${rows.length}) : ${currentID}`);
+      const currentID = rows[i].idsbr;
+      const currentHasil = rows[i].hasil;
 
-      // 1. Isi ID
+      console.log(`Proses (${i+1}/${rows.length}) : ${currentID} -> hasil: ${currentHasil}`);
+
+      // 1. Isi IDSBR
       const searchInput = document.getElementById("search-idsbr");
-      if (!searchInput) return console.log("search-idsbr tidak ditemukan");
+      if (!searchInput) {
+        console.log("search-idsbr tidak ditemukan");
+        return;
+      }
 
       searchInput.value = currentID;
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -63,10 +85,10 @@
 
       await delay(1500);
 
-      // 4. Set nilai 3
+      // 4. Set nilai sesuai kolom hasil
       const hasilGc = document.getElementById("tt_hasil_gc");
       if (hasilGc) {
-        hasilGc.value = "3";
+        hasilGc.value = currentHasil;
         hasilGc.dispatchEvent(new Event('input', { bubbles: true }));
         hasilGc.dispatchEvent(new Event('change', { bubbles: true }));
       }
@@ -79,7 +101,7 @@
 
       await delay(1500);
 
-      // 6. Klik semua SweetAlert confirm yang muncul
+      // 6. Klik semua SweetAlert confirm
       for (let j = 0; j < 3; j++) {
         const confirmBtn = await waitForElement(".swal2-confirm.swal2-styled", 5000);
         if (confirmBtn) {
@@ -90,7 +112,7 @@
         }
       }
 
-      await delay(2000); // jeda sebelum lanjut ID berikutnya
+      await delay(2000); // jeda antar ID
     }
 
     alert("Selesai semua record ✅");
